@@ -12,6 +12,14 @@ target_link_options(main_hook PRIVATE -z global)
 target_link_libraries(main_hook hook_impl)
 set_target_properties(main_hook PROPERTIES CXX_VISIBILITY_PRESET hidden)
 
+# Loaded ahead of the custom Turnip in its isolated namespace.  Horizon OS denies
+# Turnip's legacy KGSL allocation ioctl but exposes its GPUOBJ replacement.
+add_library(kgsl_compat_hook SHARED ../../../kgsl_compat.c)
+target_compile_options(kgsl_compat_hook PRIVATE -Wall -Wextra)
+target_link_options(kgsl_compat_hook PRIVATE -z global)
+target_link_libraries(kgsl_compat_hook log)
+set_target_properties(kgsl_compat_hook PROPERTIES C_VISIBILITY_PRESET hidden)
+
 add_library(file_redirect_hook SHARED file_redirect_hook.c)
 
 target_compile_options(file_redirect_hook PRIVATE -Wall -Wextra)

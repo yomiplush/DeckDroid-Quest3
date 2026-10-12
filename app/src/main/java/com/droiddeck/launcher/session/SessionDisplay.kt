@@ -47,6 +47,16 @@ object SessionDisplay {
             .filter { resolveChoice(panel, it) != screenSize(panel) } + MATCH_SCREEN + FOLLOW_SCREEN
     }
 
+    /** Bound render cost while preserving aspect and even dimensions for a smaller host surface. */
+    fun capLongSide(size: Pair<Int, Int>, maximum: Int): Pair<Int, Int> {
+        require(size.first > 0 && size.second > 0 && maximum > 0)
+        val longest = maxOf(size.first, size.second)
+        if (longest <= maximum) return size
+        val width = (size.first.toLong() * maximum / longest).toInt() and 1.inv()
+        val height = (size.second.toLong() * maximum / longest).toInt() and 1.inv()
+        return maxOf(2, width) to maxOf(2, height)
+    }
+
     /** A Follow screen session's display for a window of this size: its own shape, square or
      *  portrait included, with even sides; null when it is too small to follow (PiP). */
     fun followSize(width: Int, height: Int): Pair<Int, Int>? =

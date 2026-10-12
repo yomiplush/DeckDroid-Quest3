@@ -73,6 +73,11 @@ launcher also starts a session bus when there is none. On the Linux desktop, the
 menu entries appear in Plasma's launcher. Games are wrapped through `droiddeck-gpu` like the
 rootfs's own, since the desktop composites in software.
 
+LAN discovery protocols need Android's Wi-Fi multicast filter open. `SessionService` holds a
+non-reference-counted multicast lock for every guest session and releases it on suspend or
+teardown, so LocalSend and similar desktop apps can discover peers without keeping the radio awake
+outside an active session.
+
 ## The store
 
 `FlathubApi` reads flathub.org's public API: collections, search filtered to `aarch64`, and

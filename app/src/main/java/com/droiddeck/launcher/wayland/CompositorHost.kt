@@ -48,6 +48,9 @@ object CompositorHost {
             return false
         }
         WaylandCompositor.nativeSetOutputRefreshRate(refreshHz)
+        // Quest 3 denies Turnip's KGSL property queries (errno 19 seen), so the UBWC layout a game
+        // swapchain is tiled with is not guaranteed to match the compositor's: linear buffers only.
+        if (com.droiddeck.launcher.core.DeviceSupport.quest3) WaylandCompositor.nativeSetUbwc(false)
         WaylandCompositor.nativeStartWithSurface(
             surface, xdgRuntimeDir, driverPath, libraryName, nativeLibDir,
         )

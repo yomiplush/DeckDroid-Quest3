@@ -52,11 +52,11 @@ def outputs(root):
 
 
 def required():
-    paths = ['assets/linuxfs/' + name for name in ['libfakeinput.so', 'libblsession.so',
+    paths = ['assets/linuxfs/' + name for name in ['libkgslcompat.so', 'libfakeinput.so', 'libblsession.so',
              'libblfastpath.so', 'libssbs.so', 'usr/local/bin/droiddeck-clipboard',
              'usr/local/bin/gamescope', 'usr/local/lib/droiddeck/uruntime']]
     for arch in ['x86_64', 'i386']:
-        paths += ['assets/linuxfs/' + arch + '/' + lib for lib in ['libfakeinput.so', 'libblsession.so']]
+        paths += ['assets/linuxfs/' + arch + '/' + lib for lib in ['libkgslcompat.so', 'libfakeinput.so', 'libblsession.so']]
     paths += ['assets/linuxfs/x86_64/' + lib for lib in
               ['libfaultreport.so', 'libthunkaudit.so', 'libvulkan-thunk.so']]
     paths += ['assets/linuxfs/i386/libfaultreport.so']

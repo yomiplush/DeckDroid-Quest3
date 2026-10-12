@@ -86,6 +86,13 @@ __attribute__((visibility("default"))) void *hook_android_dlopen_ext(const char 
         LOGI("hook_android_dlopen_ext: applied libfile_redirect_hook");
     }
 
+    // The driver imports ioctl through this namespace. Load the compatibility hook before it so
+    // Horizon OS can translate denied legacy KGSL allocations to the GPUOBJ ABI.
+    if (!linkernsbypass_namespace_dlopen("libkgsl_compat_hook.so", RTLD_GLOBAL, driverNs)) {
+        LOGI("hook_android_dlopen_ext: could not load libkgsl_compat_hook");
+        return fallback();
+    }
+
     // Use our new namespace to load the vulkan driver
     auto newExtinfo{*extinfo};
     newExtinfo.library_namespace = driverNs;

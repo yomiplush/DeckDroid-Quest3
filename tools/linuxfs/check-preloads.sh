@@ -19,6 +19,8 @@ done
 if grep -qxE '__gxx_personality_v0|__cxa_throw|_Unwind_Resume' <<<"$FAKE"; then
   echo "::error::libfakeinput.so exports the C++ runtime"; exit 1
 fi
+COMPAT=$(syms "$D/libkgslcompat.so")
+grep -qx ioctl <<<"$COMPAT" || { echo "::error::libkgslcompat.so does not export ioctl"; exit 1; }
 SESSION=$(syms "$D/libblsession.so")
 for sym in socket bind getsockname setsockopt statfs statvfs syscall shm_open shm_unlink mmap mmap64 munmap drmPrimeFDToHandle drmCloseBufferHandle; do
   grep -qx "$sym" <<<"$SESSION" || { echo "::error::libblsession.so does not export $sym"; exit 1; }

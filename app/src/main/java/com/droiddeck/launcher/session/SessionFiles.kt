@@ -54,6 +54,7 @@ object SessionFiles {
             "usr/local/bin/droiddeck-esync" to "usr/local/bin/droiddeck-esync",
             "usr/local/bin/droiddeck-steam-compat" to "usr/local/bin/droiddeck-steam-compat",
             "usr/local/bin/droiddeck-fex" to "usr/local/bin/droiddeck-fex",
+            "libkgslcompat.so" to "usr/local/lib/libkgslcompat.so",
             "libblsession.so" to "usr/local/lib/libblsession.so",
             "libfakeinput.so" to "usr/local/lib/libfakeinput.so",
             "libblfastpath.so" to "usr/local/lib/libblfastpath.so",
@@ -134,7 +135,8 @@ object SessionFiles {
             .map { "usr/local/lib/droiddeck-msitools/$it" } +
             listOf("NOTICE", "GPL-2", "GPL-3", "LGPL-2.1", "7zip-License", "7zip-unRarLicense").map { "usr/local/share/licenses/droiddeck-msitools/$it" }
         val fexPreloads = listOf("x86_64", "i386").flatMap { arch ->
-            listOf("libblsession.so", "libfakeinput.so", "libfaultreport.so").map { "$arch/$it" to "usr/local/lib/droiddeck-fex/$arch/$it" }
+            listOf("libkgslcompat.so", "libblsession.so", "libfakeinput.so", "libfaultreport.so")
+                .map { "$arch/$it" to "usr/local/lib/droiddeck-fex/$arch/$it" }
         } + listOf("libthunkaudit.so", "libvulkan-thunk.so").map { "x86_64/$it" to "usr/local/lib/droiddeck-fex/x86_64/$it" }
         val optional = (arrayOf(
             "usr/local/bin/gamescope" to "usr/local/bin/gamescope",
@@ -201,7 +203,8 @@ object SessionFiles {
         // What every process in the session preloads. LD_PRELOAD in the environment would not
         // survive: the Steam client rebuilds it for each process it starts and appends its own
         // overlay entry without a separator, which silently drops whatever was there.
-        val preload = StringBuilder("/usr/local/lib/libblsession.so\n")
+        val preload = StringBuilder("/usr/local/lib/libkgslcompat.so\n")
+        preload.append("/usr/local/lib/libblsession.so\n")
         if (!File(Environment.getExternalStorageDirectory(), NO_PAD_SWITCH).exists()) {
             preload.append("/usr/local/lib/libfakeinput.so\n")
         }

@@ -74,6 +74,8 @@ class SessionService : Service() {
     private val stopLock = Any()
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
+    /** Keeps LAN multicast discovery (for example, LocalSend) flowing into the guest session. */
+    private var multicastLock: WifiManager.MulticastLock? = null
     private var sessionPid = -1
     /** Auxiliary PTY-backed proot shells launched from a secondary-display terminal. */
     private val auxiliaryProcesses = HashMap<Int, Long>()
@@ -98,6 +100,9 @@ class SessionService : Service() {
     private var suspendOperationPending = false
     private var pipTask = false
     private var suspendAttemptFailed = false
+    /** Quest 3 reports the panel non-interactive while DroidDeck is on screen; see [DeviceSupport.quest3]. */
+    private fun hiddenForSuspend() = !activityVisible || (!screenOn && !DeviceSupport.quest3)
+
     /** One validated game request waiting for this Steam session to reach a usable state. */
     private var pendingSteamGameId: String? = null
     private var pendingSteamGameGeneration = -1
@@ -1326,11 +1331,11 @@ class SessionService : Service() {
 
     private fun updateSuspendPolicy() {
         if (!SessionState.running) return
-        if (suspendPolicy == SessionPrefs.SUSPEND_MANUAL && (!activityVisible || !screenOn)) {
+        if (suspendPolicy == SessionPrefs.SUSPEND_MANUAL && hiddenForSuspend()) {
             manualPauseRequested = true
         }
         val controller = suspendController ?: return
-        val hidden = !activityVisible || !screenOn
+        val hidden = hiddenForSuspend()
         val downloadsBlockingSuspend = steamDownloadsInBackground && SessionState.mode == MODE_STEAM &&
             suspendPolicy != SessionPrefs.SUSPEND_NEVER && hidden && downloadActive && !suspendDownloadNow
         if (downloadsBlockingSuspend) acquireLocks()
@@ -1411,7 +1416,8 @@ class SessionService : Service() {
     }
 
     private fun resumeSteamSleepOnReturn() {
-        if (suspendPolicy in setOf(SessionPrefs.SUSPEND_AUTO, SessionPrefs.SUSPEND_NATIVE) && activityVisible && screenOn) {
+        if (suspendPolicy in setOf(SessionPrefs.SUSPEND_AUTO, SessionPrefs.SUSPEND_NATIVE) &&
+            !hiddenForSuspend()) {
             if (steamSleepToken == null && (nativeSleepToken == null || nativeSleepFallback)) requestSteamWake()
             completeNativeSleep()
             completeSteamSleep()
@@ -1637,8 +1643,8 @@ class SessionService : Service() {
         } catch (t: Throwable) {
             Log.w(TAG, "no wake lock (${t.message}) - the session may be killed in the background")
         }
+        val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
         try {
-            val wifi = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             val allowed = DeviceSupport.lowLatencyWifiSafe()
             if (!allowed) Log.i(TAG, "wifi lock skipped: its low-latency mode resets this device")
             @Suppress("DEPRECATION") // deprecated from API 29, still honoured; targetSdk is 28
@@ -1655,6 +1661,17 @@ class SessionService : Service() {
             // throttling a backgrounded download to nothing, which is what this lock is for.
             Log.w(TAG, "no wifi lock (${t.message}) - a backgrounded download may stall")
         }
+        try {
+            if (multicastLock?.isHeld != true) {
+                multicastLock = wifi?.createMulticastLock("DroidDeck:session-multicast")?.apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+            }
+            Log.i(TAG, "multicast lock held=${multicastLock?.isHeld}")
+        } catch (t: Throwable) {
+            Log.w(TAG, "no multicast lock (${t.message}) - LAN discovery may not work")
+        }
     }
 
     private fun releaseLocks() {
@@ -1670,6 +1687,12 @@ class SessionService : Service() {
             Log.w(TAG, "releasing the wifi lock", t)
         }
         wifiLock = null
+        try {
+            multicastLock?.takeIf { it.isHeld }?.release()
+        } catch (t: Throwable) {
+            Log.w(TAG, "releasing the multicast lock", t)
+        }
+        multicastLock = null
     }
 
     // ── Notification ────────────────────────────────────────────────────────────────────────

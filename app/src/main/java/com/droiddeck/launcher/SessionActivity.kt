@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import com.droiddeck.launcher.core.DeviceSupport
+import com.droiddeck.launcher.session.SessionDisplay
 import com.droiddeck.launcher.core.FileUtils
 import com.droiddeck.launcher.core.TextureFiltering
 import com.droiddeck.launcher.files.InAppFilePicker
@@ -585,19 +587,21 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
                     secondScreenDisplays = secondScreenDisplays,
                     selectedSecondScreenDisplay = selectedSecondScreenDisplay,
                     onHud = { on -> SessionPrefs.setHudEnabled(this@SessionActivity, on); hudOn = on; hud.refresh() },
-                    onUpscaler = { m ->
-                        SessionPrefs.setUpscaler(this@SessionActivity, m); upscaler = m
-                        WaylandCompositor.nativeSetUpscaler(m)
+                    onUpscaler = { requested ->
+                        if (!DeviceSupport.quest3) SessionPrefs.setUpscaler(this@SessionActivity, requested)
+                        upscaler = effectiveUpscaler(requested)
+                        WaylandCompositor.nativeSetUpscaler(upscaler)
                         // Two Looks carry a scaling mode of their own, so the mode decides which one the log names.
-                        WaylandCompositor.nativeSetLookName(ScreenEffectLooks.match(effects, m)?.name)
+                        WaylandCompositor.nativeSetLookName(ScreenEffectLooks.match(effects, upscaler)?.name)
                     },
                     onUpscaleSharpness = { pct ->
                         SessionPrefs.setUpscaleSharpness(this@SessionActivity, pct); upscaleSharpness = pct
                         WaylandCompositor.nativeSetUpscaleSharpness(pct)
                     },
-                    onEffects = { e ->
-                        SessionPrefs.setScreenEffects(this@SessionActivity, e); effects = e
-                        e.push(upscaler)
+                    onEffects = { requested ->
+                        if (!DeviceSupport.quest3) SessionPrefs.setScreenEffects(this@SessionActivity, requested)
+                        effects = effectiveEffects(requested)
+                        effects.push(upscaler)
                     },
                     onTextureAnisotropy = { value ->
                         drawerGameProfileId?.let { appId ->
@@ -1028,14 +1032,20 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         }
     }
 
+    /** Quest 3's Android Surface is 1280x800 while its reported panel is 4128x2208; keep the
+     *  compositor on a linear blit path instead of running its shader upscaler/post chain. */
+    private fun effectiveUpscaler(requested: Int) = if (DeviceSupport.quest3) 0 else requested
+
+    private fun effectiveEffects(requested: ScreenEffects) =
+        if (DeviceSupport.quest3) ScreenEffects.OFF else requested
+
     private fun readPrefs() {
         pipAutoEnter = SessionPrefs.pipAutoEnter(this)
         unfoldedControls = SessionPrefs.unfoldedControls(this)
         hudOn = SessionPrefs.hudEnabled(this)
-        upscaler = SessionPrefs.upscaler(this)
+        upscaler = effectiveUpscaler(SessionPrefs.upscaler(this))
         upscaleSharpness = SessionPrefs.upscaleSharpness(this)
-        effects = SessionPrefs.screenEffects(this)
-        textureAnisotropy = SessionPrefs.textureAnisotropy(this)
+        effects = effectiveEffects(SessionPrefs.screenEffects(this))
         textureLodBias = SessionPrefs.textureLodBias(this)
         val nextTouchMode = SessionPrefs.touchMode(this)
         if (touchMode != nextTouchMode) {
@@ -1237,9 +1247,10 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
         // Letterbox, never stretch or crop: the output can be a different shape from the panel,
         // and a game's picture must keep its proportions with bars, not lose its edges.
         WaylandCompositor.nativeSetScaleMode(SCALE_FIT, ALIGN_CENTER)
-        WaylandCompositor.nativeSetUpscaler(SessionPrefs.upscaler(this))
+        val activeUpscaler = effectiveUpscaler(SessionPrefs.upscaler(this))
+        WaylandCompositor.nativeSetUpscaler(activeUpscaler)
         WaylandCompositor.nativeSetUpscaleSharpness(SessionPrefs.upscaleSharpness(this))
-        SessionPrefs.screenEffects(this).push(SessionPrefs.upscaler(this))
+        effectiveEffects(SessionPrefs.screenEffects(this)).push(activeUpscaler)
         // The session's folder, claimed here because the compositor starts before the service and
         // opens its log once. The compositor reads the path from its environment; setting it after
         // it has started changes nothing, which is why the service copies the file in at teardown.
@@ -1389,7 +1400,13 @@ class SessionActivity : ComponentActivity(), SurfaceHolder.Callback {
             Library.drawsAtPanel(program) && !SessionPrefs.resolutionChosen(this, mode))
             com.droiddeck.launcher.session.SessionDisplay.MATCH_SCREEN
         else SessionPrefs.resolutionChoice(this, mode, panel)
-        return com.droiddeck.launcher.session.SessionDisplay.resolveChoice(panel, choice)
+        // Keep the guest from rendering a 4K buffer that the Quest's smaller app Surface immediately downsamples.
+        val resolved = SessionDisplay.resolveChoice(panel, choice)
+        val size = if (DeviceSupport.quest3) SessionDisplay.capLongSide(resolved, 1920) else resolved
+        if (DeviceSupport.quest3 && size != resolved) {
+            Log.i(TAG, "Quest 3 render cap: ${resolved.first}x${resolved.second} -> ${size.first}x${size.second}")
+        }
+        return size
     }
 
     /**

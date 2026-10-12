@@ -392,7 +392,7 @@ steam_root=${STEAM_COMPAT_CLIENT_INSTALL_PATH:-${XDG_DATA_HOME:-$HOME/.local/sha
 # Naming the interposer first in LD_PRELOAD puts it back in front and the overlay loads as Valve
 # intends. That matters beyond the overlay itself: every deviation from the launch Valve ships is a
 # difference this runtime would otherwise have to justify.
-for fake in /usr/local/lib/libfakeinput.so /usr/local/lib/libblsession.so; do
+for fake in /usr/local/lib/libblsession.so /usr/local/lib/libfakeinput.so /usr/local/lib/libkgslcompat.so; do
   if [ -f "$fake" ]; then
     case ":${LD_PRELOAD:-}:" in
       *":$fake:"*) ;;
@@ -482,7 +482,7 @@ here=$(dirname "$0")
 # See droiddeck-proton: the interposer goes first in LD_PRELOAD rather than the overlay being
 # removed, because glibc reads LD_PRELOAD before /etc/ld.so.preload and the overlay was simply
 # ahead of it on /dev/input.
-for fake in /usr/local/lib/libfakeinput.so /usr/local/lib/libblsession.so; do
+for fake in /usr/local/lib/libblsession.so /usr/local/lib/libfakeinput.so /usr/local/lib/libkgslcompat.so; do
   if [ -f "$fake" ]; then
     case ":${LD_PRELOAD:-}:" in
       *":$fake:"*) ;;

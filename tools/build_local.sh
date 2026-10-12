@@ -88,6 +88,9 @@ docker run --rm --platform linux/amd64 \
             -pthread -std=c++17 -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL \
             -o "$d/libfakeinput.so" app/src/main/cpp/fakeinput_steam.cpp -ldl
         aarch64-linux-gnu-strip --strip-unneeded "$d/libfakeinput.so"
+        aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall \
+            -o "$d/libkgslcompat.so" app/src/main/cpp/kgsl_compat.c
+        aarch64-linux-gnu-strip --strip-unneeded "$d/libkgslcompat.so"
         aarch64-linux-gnu-gcc -shared -fPIC -O2 -Wall -pthread \
             -o "$d/libblsession.so" tools/linuxfs/preload/*.c -ldl
         aarch64-linux-gnu-strip --strip-unneeded "$d/libblsession.so"

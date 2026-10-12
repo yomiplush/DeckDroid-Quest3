@@ -12,8 +12,11 @@ for arch in x86_64 i386; do
   g++ $bits -shared -fPIC -O2 -Wall -Wno-attributes -Wno-nonnull-compare \
     -pthread -std=c++17 -static-libstdc++ -static-libgcc -Wl,--exclude-libs,ALL \
     -o "$out/$arch/libfakeinput.so" app/src/main/cpp/fakeinput_steam.cpp -ldl
+  gcc $bits -shared -fPIC -O2 -Wall \
+    -o "$out/$arch/libkgslcompat.so" app/src/main/cpp/kgsl_compat.c
+  strip --strip-unneeded "$out/$arch/libkgslcompat.so"
   strip --strip-unneeded "$out/$arch/libblsession.so" "$out/$arch/libfakeinput.so"
-  for lib in "$out/$arch/libblsession.so" "$out/$arch/libfakeinput.so"; do
+  for lib in "$out/$arch/libkgslcompat.so" "$out/$arch/libblsession.so" "$out/$arch/libfakeinput.so"; do
     newest=$(objdump -T "$lib" | grep -o 'GLIBC_2\.[0-9]*' | sort -u -t. -k2,2n | tail -1)
     minor=${newest#GLIBC_2.}
     if [ "$minor" -gt 31 ]; then

@@ -18,6 +18,11 @@ object DeviceSupport {
     fun adreno(): Boolean =
         File("/sys/class/kgsl/kgsl-3d0").exists() || File("/vendor/lib64/hw/vulkan.adreno.so").exists()
 
+    /** Meta Quest 3 (Horizon OS): its panel reports non-interactive while an immersive app draws,
+     *  and its SELinux policy blocks KGSL calls the Turnip driver otherwise relies on. */
+    val quest3: Boolean =
+        Build.MANUFACTURER.equals("Oculus", ignoreCase = true) && Build.DEVICE == "eureka"
+
     /** The chip as the device names it, for the card that explains the refusal. */
     fun gpuName(context: Context): String {
         val soc = if (Build.VERSION.SDK_INT >= 31) Build.SOC_MODEL.takeIf { it.isNotBlank() && it != Build.UNKNOWN } else null
