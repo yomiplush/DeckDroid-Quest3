@@ -5,6 +5,26 @@
   </picture>
 </p>
 
+# DeckDroid-Quest3
+
+A **fork** of [DroidDeck](https://github.com/Droid-Deck/DroidDeck) by [@yomiplush](https://github.com/yomiplush), focused on running Valve's Steam client on the **Meta Quest 3** (Snapdragon 8 Gen 2 / Adreno 740). This repository is **not** the upstream project and is **not** affiliated with the DroidDeck team.
+
+## Changes on top of upstream
+
+- **KGSL compatibility shim** (`app/src/main/cpp/kgsl_compat.c`): Horizon OS denies Turnip's legacy KGSL allocation ioctls. The shim translates `GPUMEM_ALLOC_ID` / `GPUMEM_FREE_ID` into the `GPUOBJ` ABI and emulates the legacy timestamp query through `WAITTIMESTAMP_CTXTID`, so gamescope, Steam and Proton can draw on the Quest 3. It is loaded with `-z global` so the driver's own `ioctl` resolves to it.
+- **Quest 3 render profile**: the Quest reports a 4128×2208 panel while its app Surface is much smaller. The guest resolution is capped to a 1920-px long side, and the compositor is kept on a plain linear blit (the shader upscaler and post chain are disabled on this device) to avoid a corrupted/noisy picture.
+- **Quest 3 suspend policy**: the Quest reports its panel as non-interactive while DroidDeck is on screen; the session no longer treats that as "screen off" and stops suspending gamescope.
+
+## License
+
+Unchanged **GPL-3.0** — see [LICENSE](LICENSE). Third-party components keep their own licenses: `uruntime` (MIT, `tools/linuxfs/licenses/uruntime-LICENSE`), the DXBC translator (zlib, `app/src/main/cpp/thirdparty/dxbc/LICENSE.md`), adrenotools / linkernsbypass, and the Win-FG notices. LSFG frame generation ships **no** Lossless Scaling shaders (you need your own copy of Lossless Scaling). Steam and Proton belong to Valve Corporation.
+
+## CI
+
+This fork inherits upstream's GitHub Actions workflows, which reference upstream secrets that do not exist here. Actions are therefore **disabled** in this repository; re-enable from Settings → Actions only after adding your own secrets.
+
+---
+
 DroidDeck brings the SteamOS experience to Android: Valve's Steam client in Big Picture on your Adreno handheld, with Windows games through Valve's ARM64 Proton.
 
 <p align="center"><a href="https://discord.gg/JRGAvawjsm"><img src="https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?logo=discord&logoColor=white" alt="Join the DroidDeck Discord"></a></p>
